@@ -1,0 +1,3 @@
+Develop the character '{character}' in response to '{input}', updating their profile with new traits or arcs.
+Output concise updates suitable to append to the character's profile.
+Return only the updated character profile text (no extra explanations).

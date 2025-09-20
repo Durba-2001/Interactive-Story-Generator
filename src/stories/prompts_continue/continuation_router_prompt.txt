@@ -1,0 +1,3 @@
+Classify this input '{input}' for the story state '{state_summary}':
+Choose one of 'extend_plot', 'develop_character', or 'append_scene'.
+Only return the chosen keyword.
