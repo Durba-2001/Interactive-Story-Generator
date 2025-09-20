@@ -18,17 +18,18 @@ router = APIRouter()
 # -------------------------
 # JWT Functions
 # -------------------------
-def create_access_token(username: str, expires_delta: timedelta = None):
+def create_access_token(user: UserSchema, expires_delta: timedelta = None):
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    payload = {"sub": username, "exp": expire}
-    logger.debug(f"Creating access token for {username} expiring at {expire}")
+    payload = {"sub": user.username, "email": user.email, "exp": expire}
+    logger.debug(f"Creating access token for {user.username} expiring at {expire}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-def create_refresh_token(username: str, expires_delta: timedelta = None):
+def create_refresh_token(user: UserSchema, expires_delta: timedelta = None):
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
-    payload = {"sub": username, "exp": expire}
-    logger.debug(f"Creating refresh token for {username} expiring at {expire}")
+    payload = {"sub": user.username, "email": user.email, "exp": expire}
+    logger.debug(f"Creating refresh token for {user.username} expiring at {expire}")
     return jwt.encode(payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+
 
 # -------------------------
 # Auth Utilities
@@ -80,18 +81,20 @@ async def register(user: UserCreate, db=Depends(get_db)):
     hashed_pw = pwd_context.hash(user.password)
     user_doc = UserSchema(
         username=user.username,
+        email=user.email,
         hashed_password=hashed_pw,
         created_at=datetime.now(timezone.utc)
     )
     await db["users"].insert_one(user_doc.model_dump())
     logger.success(f"User registered successfully: {user.username}")
 
-    # Automatically return access token after registration
-    access_token = create_access_token(user.username)
-    refresh_token = create_refresh_token(user.username)
+    # Pass the full UserSchema object to JWT functions
+    access_token = create_access_token(user_doc)
+    refresh_token = create_refresh_token(user_doc)
 
     return {
         "username": user_doc.username,
+        "email": user_doc.email,
         "created_at": user_doc.created_at,
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -103,12 +106,45 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get
     logger.info(f"Login endpoint called for: {form_data.username}")
     user = await authenticate_user(db, form_data.username, form_data.password)
 
-    access_token = create_access_token(user.username)
-    refresh_token = create_refresh_token(user.username)
+    # Pass the full UserSchema object to JWT functions
+    access_token = create_access_token(user)
+    refresh_token = create_refresh_token(user)
     logger.success(f"Login successful for: {user.username}")
 
     return {
+        "username": user.username,
+        "email": user.email,
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
+@router.post("/refresh")
+async def refresh_token(refresh_token: str, db=Depends(get_db)):
+    logger.info("Refresh token endpoint called")
+    try:
+        payload = jwt.decode(refresh_token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            logger.error("Refresh token missing username")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+        user = await db["users"].find_one({"username": username})
+        if not user:
+            logger.error(f"User not found for refresh token: {username}")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
+
+        user_doc = UserSchema(**user)
+        new_access_token = create_access_token(user_doc)
+        new_refresh_token = create_refresh_token(user_doc)
+        logger.success(f"Tokens refreshed successfully for: {username}")
+
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer"
+        }
+    except JWTError:
+        logger.exception("JWT decode error on refresh")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+    
