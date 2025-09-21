@@ -1,6 +1,12 @@
-def main():
-    print("Hello from interactive-story-generator!")
+from fastapi import FastAPI
+from src.stories.router import router as api_router
+from src.auth.router import router as auth_router
 
+app = FastAPI(
+    title="Interactive Story Generator",
+    version="1.0",
+    description="An API for generating interactive stories using AI."
+)
 
-if __name__ == "__main__":
-    main()
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(api_router, prefix="/api", tags=["Stories"])

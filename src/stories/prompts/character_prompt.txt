@@ -10,7 +10,7 @@ Each character must include:
 - Personality & motivations  
 - Role in the story  
 
-Return the output as a valid JSON list of objects:
+Return the output as a valid JSON list of objects, only JSON, no markdown or code fences:
 [
   {
     "name": "...",
@@ -19,4 +19,5 @@ Return the output as a valid JSON list of objects:
     "role": "..."
   }
 ]
-Ensure diversity, depth, and alignment with the story's genre and setting.  
+
+Ensure diversity, depth, and alignment with the story's genre and setting.

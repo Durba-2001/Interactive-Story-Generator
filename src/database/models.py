@@ -16,6 +16,7 @@ class StoryStateModel(BaseModel):
     characters: List[Dict] = []
     scenes: List[str] = []
     history: List[Dict] = []  # internal workflow messages
+    prompt: str  
 
 # --- Stories Collection ---
 class StoryModel(BaseModel):

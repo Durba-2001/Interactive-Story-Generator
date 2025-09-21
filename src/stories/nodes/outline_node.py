@@ -4,7 +4,6 @@ from src.config import api_key
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts/outline_prompt.txt"
-
 async def outline_node(state: StoryStateModel) -> StoryStateModel:
     # Read and format prompt
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
@@ -13,23 +12,15 @@ async def outline_node(state: StoryStateModel) -> StoryStateModel:
     # Generate outline
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
     
-    # Split response into lines
-    lines = response.text.splitlines()
+    # Extract text from AIMessage
+    text = response.content
 
-    # Initialize cleaned list
-    cleaned_lines = []
-
-    # Strip each line and remove empty lines
-    for line in lines:
-        stripped = line.strip()
-        if stripped:  # Only add non-empty lines
-            cleaned_lines.append(stripped)
-
+    # Split and clean lines
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    
     # Assign to state
-    state.outline = cleaned_lines
-
-    # Update history and current node
-    state.history.append({"role": "assistant", "content": response.text})
+    state.outline = lines
+    state.history.append({"role": "assistant", "content": text})
     state.current_node = "character_node"
     
     return state

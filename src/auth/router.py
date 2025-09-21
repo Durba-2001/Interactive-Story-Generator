@@ -1,17 +1,16 @@
-
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from loguru import logger
-
+from bson import ObjectId
 from src.database.connection import get_db
 from src.auth.models import UserSchema, UserCreate, UserResponse
 from src.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 router = APIRouter()
 
@@ -20,16 +19,25 @@ router = APIRouter()
 # -------------------------
 def create_access_token(user: UserSchema, expires_delta: timedelta = None):
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    payload = {"sub": user.username, "email": user.email, "exp": expire}
+    payload = {
+        "sub": str(user.user_id),  # store user_id, not username
+        "username": user.username,
+        "email": user.email,
+        "exp": expire
+    }
     logger.debug(f"Creating access token for {user.username} expiring at {expire}")
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 def create_refresh_token(user: UserSchema, expires_delta: timedelta = None):
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
-    payload = {"sub": user.username, "email": user.email, "exp": expire}
+    payload = {
+        "sub": str(user.user_id),
+        "username": user.username,
+        "email": user.email,
+        "exp": expire
+    }
     logger.debug(f"Creating refresh token for {user.username} expiring at {expire}")
     return jwt.encode(payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
-
 
 # -------------------------
 # Auth Utilities
@@ -51,17 +59,17 @@ async def authenticate_user(db, username: str, password: str):
 async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if not username:
-            logger.error("Token missing username")
+        user_id = payload.get("sub")
+        if not user_id:
+            logger.error("Token missing user_id")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-        user = await db["users"].find_one({"username": username})
+        user = await db["users"].find_one({"user_id": user_id})
         if not user:
-            logger.error(f"User not found for token: {username}")
+            logger.error(f"User not found for token: {user_id}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
 
-        logger.debug(f"Token validated for user: {username}")
+        logger.debug(f"Token validated for user: {user['username']}")
         return UserSchema(**user)
     except JWTError:
         logger.exception("JWT decode error")
@@ -80,6 +88,7 @@ async def register(user: UserCreate, db=Depends(get_db)):
 
     hashed_pw = pwd_context.hash(user.password)
     user_doc = UserSchema(
+        user_id=str(ObjectId()),
         username=user.username,
         email=user.email,
         hashed_password=hashed_pw,
@@ -88,7 +97,6 @@ async def register(user: UserCreate, db=Depends(get_db)):
     await db["users"].insert_one(user_doc.model_dump())
     logger.success(f"User registered successfully: {user.username}")
 
-    # Pass the full UserSchema object to JWT functions
     access_token = create_access_token(user_doc)
     refresh_token = create_refresh_token(user_doc)
 
@@ -106,7 +114,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get
     logger.info(f"Login endpoint called for: {form_data.username}")
     user = await authenticate_user(db, form_data.username, form_data.password)
 
-    # Pass the full UserSchema object to JWT functions
     access_token = create_access_token(user)
     refresh_token = create_refresh_token(user)
     logger.success(f"Login successful for: {user.username}")
@@ -124,20 +131,20 @@ async def refresh_token(refresh_token: str, db=Depends(get_db)):
     logger.info("Refresh token endpoint called")
     try:
         payload = jwt.decode(refresh_token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        if not username:
-            logger.error("Refresh token missing username")
+        user_id = payload.get("sub")
+        if not user_id:
+            logger.error("Refresh token missing user_id")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-        user = await db["users"].find_one({"username": username})
+        user = await db["users"].find_one({"user_id": user_id})
         if not user:
-            logger.error(f"User not found for refresh token: {username}")
+            logger.error(f"User not found for refresh token: {user_id}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
 
         user_doc = UserSchema(**user)
         new_access_token = create_access_token(user_doc)
         new_refresh_token = create_refresh_token(user_doc)
-        logger.success(f"Tokens refreshed successfully for: {username}")
+        logger.success(f"Tokens refreshed successfully for: {user_doc.username}")
 
         return {
             "access_token": new_access_token,
@@ -147,4 +154,3 @@ async def refresh_token(refresh_token: str, db=Depends(get_db)):
     except JWTError:
         logger.exception("JWT decode error on refresh")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
-    

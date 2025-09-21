@@ -1,9 +1,10 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+from bson import ObjectId
 from datetime import datetime
 from typing import Optional
 
 class UserSchema(BaseModel):
-    user_id: Optional[str] = None  # store MongoDB ObjectId as str
+    user_id: str = Field(default_factory=lambda: str(ObjectId()))  # store MongoDB ObjectId as str
     username: str
     email: EmailStr
     hashed_password: str
