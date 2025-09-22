@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from src.database.connection import get_db
-from src.database.models import StoryModel, StoryCreate, StoryStateModel
-from src.stories.workflow import create_workflow
+from src.database.models import StoryModel, StoryCreate, StoryStateModel,StoryContinue
+from src.stories.workflow import create_workflow, create_continuation_workflow
 import uuid
 from loguru import logger
 from src.auth.router import get_current_user
@@ -23,17 +23,19 @@ async def create_story(
     initial_state = StoryStateModel(prompt=request.prompt)
 
     # Run async
-    final_state = await workflow.ainvoke(initial_state)
+    final_state_dict = await workflow.ainvoke(initial_state)
+    final_state = StoryStateModel(**final_state_dict)  # Convert dict to model
 
     new_story = StoryModel(
-        story_id=story_id,
-        user_id=current_user.user_id,
-        prompt=request.prompt,
-        state=final_state,
-        history=[{"role": "user", "content": request.prompt}],
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-    )
+    story_id=story_id,
+    user_id=current_user.user_id,
+    prompt=request.prompt,
+    state=final_state,
+    history=[{"role": "user", "content": request.prompt}] + final_state.history,
+    created_at=datetime.now(timezone.utc),
+    updated_at=datetime.now(timezone.utc),
+)
+
 
     await db["stories"].insert_one(new_story.model_dump())
     logger.success(
@@ -45,34 +47,42 @@ async def create_story(
 @router.post("/continue/{story_id}", response_model=StoryModel)
 async def continue_story(
     story_id: str,
-    user_input: StoryCreate,
+    user_input: StoryContinue,
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    # Fetch existing story
     story = await db["stories"].find_one(
-        {"story_id": story_id, "user_id": current_user["user_id"]}
+        {"story_id": story_id, "user_id": current_user.user_id}
     )
     if not story:
-        logger.error(
-            f"Story not found or access denied for story ID: {story_id}"
-        )
+        logger.error(f"Story not found or access denied for story ID: {story_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Story not found"
         )
 
+    # Load story into Pydantic model
     story_doc = StoryModel(**story)
-    workflow = create_workflow()  # Re-initialize LangGraph workflow
 
-    # Feed existing state and new input
+    # Initialize workflow
+    workflow = create_continuation_workflow()
+    # Update prompt in existing state
     story_doc.state.prompt = user_input.input_text
-    updated_state = await workflow.ainvoke(story_doc.state)
 
+    # Invoke workflow
+    updated_state_dict = await workflow.ainvoke(story_doc.state)
+
+    # Convert dict returned from workflow into StoryStateModel
+    updated_state = StoryStateModel(**updated_state_dict)
+
+    # Update story state and history
     story_doc.state = updated_state
     story_doc.history.append({"role": "user", "content": user_input.input_text})
     story_doc.updated_at = datetime.now(timezone.utc)
 
+    # Persist changes
     await db["stories"].update_one(
-        {"story_id": story_id, "user_id": current_user["user_id"]},
+        {"story_id": story_id, "user_id": current_user.user_id},
         {
             "$set": {
                 "state": story_doc.state.model_dump(),
@@ -82,10 +92,9 @@ async def continue_story(
         },
     )
 
-    logger.info(
-        f"Story with ID: {story_id} updated for user: {current_user['username']}"
-    )
+    logger.info(f"Story with ID: {story_id} updated for user: {current_user.username}")
     return story_doc
+
 
 
 @router.get("/{story_id}", response_model=StoryModel)

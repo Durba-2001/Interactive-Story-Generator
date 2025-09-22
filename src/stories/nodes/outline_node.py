@@ -16,11 +16,16 @@ async def outline_node(state: StoryStateModel) -> StoryStateModel:
     text = response.content
 
     # Split and clean lines
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    
+    lines = []
+    for line in text.splitlines():  # Split the text into individual lines
+        stripped_line = line.strip()  # Remove leading/trailing whitespace
+        if stripped_line:  # Only keep non-empty lines
+            lines.append(stripped_line)
+
+    history_text = text.replace("\n", " ").strip()
     # Assign to state
     state.outline = lines
-    state.history.append({"role": "assistant", "content": text})
+    state.history.append({"role": "assistant", "content": history_text})
     state.current_node = "character_node"
     
     return state

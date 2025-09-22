@@ -10,11 +10,16 @@ async def scene_node(state: StoryStateModel) -> StoryStateModel:
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         template = f.read()
 
-    # Safely format characters, defaulting missing description to empty string
-    characters_str = "\n".join([
-        f"{c.get('name', 'Unknown')} - {c.get('description', '')}"
-        for c in state.characters
-    ])
+   # Safely format characters, defaulting missing description to empty string
+    characters_str = ""
+    for c in state.characters:
+        name = c.get("name", "Unknown")
+        description = c.get("description", "")
+        characters_str += f"{name} - {description}\n"
+
+    # Remove the trailing newline if needed
+    characters_str = characters_str.rstrip("\n")
+
 
     # Format prompt
     prompt_text = template.format(
@@ -27,11 +32,17 @@ async def scene_node(state: StoryStateModel) -> StoryStateModel:
     text = response.content  # use .content instead of .text
 
     # Clean lines
-    cleaned_lines = [line.strip() for line in text.splitlines() if line.strip()]
+    cleaned_lines = []
 
+    for line in text.splitlines():  # Split text into lines
+        stripped_line = line.strip()  # Remove leading/trailing whitespace
+        if stripped_line:  # Only keep non-empty lines
+            cleaned_lines.append(stripped_line)
+
+    history_text = text.replace("\n", " ").strip()
     # Update state
     state.scenes = cleaned_lines
-    state.history.append({"role": "assistant", "content": text})
+    state.history.append({"role": "assistant", "content": history_text})
     state.current_node = "end_node"  # adjust as needed
 
     return state

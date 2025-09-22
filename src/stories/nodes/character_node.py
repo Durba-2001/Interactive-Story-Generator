@@ -1,11 +1,10 @@
+import json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
 from src.config import api_key
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts/character_prompt.txt"
-
-import json
 
 
 async def character_node(state: StoryStateModel) -> StoryStateModel:
@@ -18,7 +17,7 @@ async def character_node(state: StoryStateModel) -> StoryStateModel:
 
     # Call LLM
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
-    text = response.content
+    text = response.content.strip()
 
     # Parse JSON safely
     try:
@@ -26,15 +25,15 @@ async def character_node(state: StoryStateModel) -> StoryStateModel:
         if isinstance(characters_json, list):
             state.characters = characters_json
         else:
-            # fallback: treat as a single character name
             state.characters = [{"name": str(characters_json)}]
     except json.JSONDecodeError:
-        # fallback: treat each line as a simple name
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        state.characters = [{"name": line} for line in lines]
+        # Fallback if JSON parsing fails
+        state.characters = [{"name": text}]
 
-    # Update history and move to next node
-    state.history.append({"role": "assistant", "content": text})
+    # Clean only for history (avoid \n in JSON)
+    history_text = text.replace("\n", " ").strip()
+
+    state.history.append({"role": "assistant", "content": history_text})
     state.current_node = "scene_node"
 
     return state

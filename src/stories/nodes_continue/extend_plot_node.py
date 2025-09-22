@@ -4,31 +4,29 @@ from src.config import api_key
 
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts_continue/extend_plot_prompt.txt"
-async def extend_plot_node(state: StoryStateModel, user_input: str) -> StoryStateModel:
-    # Read and format prompt
+
+async def extend_plot_node(state: StoryStateModel) -> StoryStateModel:
     with open(PROMPT_FILE, "r") as f:
-        prompt_text = f.read().format(input=user_input, outline="\n".join(state.outline))
-    
-    # Generate extended plot
+        prompt_text = f.read().format(
+            input=state.user_input,
+            outline="\n".join(state.outline)
+        )
+
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
-    
-    # Split response into lines
-    lines = response.text.splitlines()
+    assistant_text = response.content.strip()
 
-    # Initialize cleaned list
-    cleaned_lines = []
+    # Clean lines and update outline
+    lines = assistant_text.splitlines()  # Split the text into individual lines
+    clean_lines = []
 
-    # Strip each line and remove empty lines
     for line in lines:
-        stripped = line.strip()
-        if stripped:  # Only add non-empty lines
-            cleaned_lines.append(stripped)
+        stripped_line = line.strip()  # Remove leading/trailing whitespace
+        if stripped_line:  # Only keep non-empty lines
+            clean_lines.append(stripped_line)
 
-    # Assign to state
-    state.outline = cleaned_lines
-    
-    # Update state
-    state.history.append({"role": "assistant", "content": response.text})
-    state.current_node = "continuation_router_node"  # Loop back to router for further input
-    
+    state.outline = clean_lines
+
+
+    state.history.append({"role": "assistant", "content": assistant_text})
+    state.current_node = "continuation_router_node"  # loop back
     return state

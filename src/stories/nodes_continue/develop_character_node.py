@@ -5,17 +5,31 @@ from src.config import api_key
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts_continue/develop_character_prompt.txt"
 
-async def develop_character_node(state: StoryStateModel, user_input: str) -> StoryStateModel:
-    # Read and format prompt
-    with open(PROMPT_FILE, "r") as f:
-        prompt_text = f.read().format(input=user_input, character=state.character)
+async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
+    # Choose a target character from user_input or default to first
+    if state.user_input:
+        target = state.user_input
+    else:
+        if state.characters:
+            target = state.characters[0]["name"]
+        else:
+            target = "Character"
 
-    # Generate character development
+
+    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+        prompt_text = f.read().format(
+            input=state.user_input,
+            character=target
+        )
+
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
+    assistant_text = response.content.strip()
 
-    # Update state
-    state.character = response.text
-    state.history.append({"role": "assistant", "content": response.text})
-    state.current_node = "continuation_router_node"  # Loop back to router for further input
+    # Update a character (simple example: append new info to first character matching name)
+    for char in state.characters:
+        if char.get("name") == target:
+            char["background"] = char.get("background", "") + " " + assistant_text
 
+    state.history.append({"role": "assistant", "content": assistant_text})
+    state.current_node = "continuation_router_node"  # loop back
     return state

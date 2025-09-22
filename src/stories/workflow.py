@@ -14,9 +14,9 @@ from src.database.models import StoryStateModel
 # ---------------------------
 # Continuation routing logic
 # ---------------------------
-def continuation_router_condition(state: dict) -> str:
-    """Decide which continuation node to route to."""
-    return state.get("route")  # must be set inside continuation_router_node
+def continuation_router_condition(state: StoryStateModel) -> str:
+    """Return the route explicitly set by the continuation_router_node."""
+    return state.route  # Must be set inside continuation_router_node
 
 
 # ---------------------------
@@ -49,13 +49,13 @@ def create_workflow():
 def create_continuation_workflow():
     graph = StateGraph(StoryStateModel)
 
-    # Continuation flow nodes
+    # Nodes
     graph.add_node("continuation_router_node", continuation_router_node)
     graph.add_node("extend_plot_node", extend_plot_node)
     graph.add_node("develop_character_node", develop_character_node)
     graph.add_node("append_scene_node", append_scene_node)
 
-    # Conditional routing
+    # Conditional edges
     graph.add_conditional_edges(
         "continuation_router_node",
         continuation_router_condition,
@@ -66,12 +66,12 @@ def create_continuation_workflow():
         }
     )
 
-    # Loop back or end
+    # Loops / End
     graph.add_edge("extend_plot_node", "continuation_router_node")
     graph.add_edge("develop_character_node", "continuation_router_node")
     graph.add_edge("append_scene_node", END)
 
-    # Entry point for continuation
+    # Entry
     graph.set_entry_point("continuation_router_node")
 
     return graph.compile()

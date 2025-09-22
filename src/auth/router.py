@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from loguru import logger
+import uuid
 from bson import ObjectId
 from src.database.connection import get_db
 from src.auth.models import UserSchema, UserCreate, UserResponse
@@ -20,7 +21,7 @@ router = APIRouter()
 def create_access_token(user: UserSchema, expires_delta: timedelta = None):
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload = {
-        "sub": str(user.user_id),  # store user_id, not username
+        "sub": str(user.user_id),  
         "username": user.username,
         "email": user.email,
         "exp": expire
@@ -88,7 +89,7 @@ async def register(user: UserCreate, db=Depends(get_db)):
 
     hashed_pw = pwd_context.hash(user.password)
     user_doc = UserSchema(
-        user_id=str(ObjectId()),
+        user_id=str(uuid.uuid4()),
         username=user.username,
         email=user.email,
         hashed_password=hashed_pw,

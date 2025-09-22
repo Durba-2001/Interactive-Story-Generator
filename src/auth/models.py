@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 class UserSchema(BaseModel):
-    user_id: str = Field(default_factory=lambda: str(ObjectId()))  # store MongoDB ObjectId as str
+    user_id: str   # store MongoDB ObjectId as str
     username: str
     email: EmailStr
     hashed_password: str
