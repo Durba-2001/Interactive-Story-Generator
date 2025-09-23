@@ -7,8 +7,8 @@ PROMPT_FILE = r"src/stories/prompts_continue/develop_character_prompt.txt"
 
 async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
     # Choose a target character from user_input or default to first
-    if state.user_input:
-        target = state.user_input
+    if state.prompt:
+        target = state.prompt
     else:
         if state.characters:
             target = state.characters[0]["name"]
@@ -16,9 +16,9 @@ async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
             target = "Character"
 
 
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    with open(PROMPT_FILE, "r") as f:
         prompt_text = f.read().format(
-            input=state.user_input,
+            input=state.prompt,
             character=target
         )
 

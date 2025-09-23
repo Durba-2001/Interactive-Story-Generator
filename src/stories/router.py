@@ -51,51 +51,62 @@ async def continue_story(
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    # Fetch existing story
+    # Fetch story
     story = await db["stories"].find_one(
         {"story_id": story_id, "user_id": current_user.user_id}
     )
     if not story:
-        logger.error(f"Story not found or access denied for story ID: {story_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Story not found"
-        )
+        raise HTTPException(status_code=404, detail="Story not found")
 
-    # Load story into Pydantic model
+    # Load into Pydantic model
     story_doc = StoryModel(**story)
 
-    # Initialize workflow
-    workflow = create_continuation_workflow()
-    # Update prompt in existing state
-    story_doc.state.prompt = user_input.input_text
+    # Update prompt
+    story_doc.state.prompt = user_input.prompt
 
     # Invoke workflow
-    updated_state_dict = await workflow.ainvoke(story_doc.state)
+    workflow = create_continuation_workflow()
+    updated_state = await workflow.ainvoke(story_doc.state)
 
-    # Convert dict returned from workflow into StoryStateModel
-    updated_state = StoryStateModel(**updated_state_dict)
+    # Persist updated state & history
+   
 
-    # Update story state and history
-    story_doc.state = updated_state
-    story_doc.history.append({"role": "user", "content": user_input.input_text})
+    updated_state_model = StoryStateModel(**updated_state)
+    story_doc.state = updated_state_model
     story_doc.updated_at = datetime.now(timezone.utc)
 
-    # Persist changes
     await db["stories"].update_one(
-        {"story_id": story_id, "user_id": current_user.user_id},
-        {
-            "$set": {
-                "state": story_doc.state.model_dump(),
-                "history": story_doc.history,
-                "updated_at": story_doc.updated_at,
-            }
-        },
-    )
+    {"story_id": story_id, "user_id": current_user.user_id},
+    {"$set": {
+        "state": story_doc.state.model_dump(),
+        "history": story_doc.state.history,
+        "updated_at": story_doc.updated_at,
+    }},
+)
 
-    logger.info(f"Story with ID: {story_id} updated for user: {current_user.username}")
     return story_doc
 
 
+@router.get("/", response_model=list[StoryModel])
+async def get_all_stories(
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    stories_cursor = db["stories"].find({"user_id": current_user.user_id})
+
+    stories = []
+    async for story in stories_cursor:
+        story_model = StoryModel(**story)
+        stories.append(story_model)
+
+    if not stories:
+        logger.warning(f"No stories found for user: {current_user.username}")
+        return []
+
+    logger.info(
+        f"{len(stories)} stories retrieved for user: {current_user.username}"
+    )
+    return stories
 
 @router.get("/{story_id}", response_model=StoryModel)
 async def get_story(
@@ -118,3 +129,29 @@ async def get_story(
         f"Story with ID: {story_id} retrieved for user: {current_user.username}"
     )
     return StoryModel(**story)
+
+@router.delete("/{story_id}", status_code=200)
+async def delete_story(
+    story_id: str,
+    db=Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    story = await db["stories"].find_one(
+        {"story_id": story_id, "user_id": current_user.user_id}
+    )
+    if not story:
+        logger.error(
+            f"Story not found or access denied for story ID: {story_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Story not found"
+        )
+
+    await db["stories"].delete_one(
+        {"story_id": story_id, "user_id": current_user.user_id}
+    )
+
+    logger.success(
+        f"Story with ID: {story_id} deleted for user: {current_user.username}"
+    )
+    return {"message": f"Story {story_id} deleted successfully"}

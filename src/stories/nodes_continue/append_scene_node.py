@@ -24,7 +24,7 @@ async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
     with open(PROMPT_FILE, "r") as f:
         prompt_text = f.read().format(
             last_scene=last_scene,
-            input=state.user_input,
+            input=state.prompt,
             outline=outline_text,
             characters=characters_text
         )
@@ -35,9 +35,5 @@ async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
 
     state.scenes.append(assistant_text_clean)
     state.history.append({"role": "assistant", "content": assistant_text_clean})
-
-
-    state.scenes.append(assistant_text)
-    state.history.append({"role": "assistant", "content": assistant_text})
     state.current_node = "done"  # end node
     return state

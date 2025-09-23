@@ -7,7 +7,7 @@ class StoryCreate(BaseModel):
     prompt: str
 
 class StoryContinue(BaseModel):
-    input_text: str
+    prompt: str
 
 # --- Story State (LangGraph checkpoint) ---
 class StoryStateModel(BaseModel):
@@ -17,6 +17,7 @@ class StoryStateModel(BaseModel):
     scenes: List[str] = []
     history: List[Dict] = []  # internal workflow messages
     prompt:str
+    route: Optional[str] = None 
 
 # --- Stories Collection ---
 class StoryModel(BaseModel):

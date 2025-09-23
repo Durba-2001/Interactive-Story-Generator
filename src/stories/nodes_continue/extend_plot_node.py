@@ -8,7 +8,7 @@ PROMPT_FILE = r"src/stories/prompts_continue/extend_plot_prompt.txt"
 async def extend_plot_node(state: StoryStateModel) -> StoryStateModel:
     with open(PROMPT_FILE, "r") as f:
         prompt_text = f.read().format(
-            input=state.user_input,
+            input=state.prompt,
             outline="\n".join(state.outline)
         )
 

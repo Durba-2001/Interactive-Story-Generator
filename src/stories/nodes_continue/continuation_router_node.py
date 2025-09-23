@@ -10,7 +10,7 @@ async def continuation_router_node(state: StoryStateModel) -> StoryStateModel:
     # Read prompt
     with open(PROMPT_FILE, "r") as f:
         prompt_text = f.read().format(
-            input=state.user_input,
+            input=state.prompt,
             state_summary=" ".join(state.outline)
         )
 
@@ -22,7 +22,7 @@ async def continuation_router_node(state: StoryStateModel) -> StoryStateModel:
     assistant_text_clean = " ".join(assistant_text.split())
 
 # Update history
-    state.history.append({"role": "user", "content": state.user_input})
+    state.history.append({"role": "user", "content": state.prompt})
     state.history.append({"role": "assistant", "content": assistant_text_clean})
 
     # Explicitly set route
