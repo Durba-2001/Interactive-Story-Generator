@@ -9,7 +9,7 @@ PROMPT_FILE = r"src/stories/prompts/character_prompt.txt"
 
 async def character_node(state: StoryStateModel) -> StoryStateModel:
     # Read template
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    with open(PROMPT_FILE, "r") as f:
         template = f.read()
 
     # Inject outline
@@ -27,13 +27,11 @@ async def character_node(state: StoryStateModel) -> StoryStateModel:
         else:
             state.characters = [{"name": str(characters_json)}]
     except json.JSONDecodeError:
-        # Fallback if JSON parsing fails
         state.characters = [{"name": text}]
+        characters_json = [{"name": text}]
 
-    # Clean only for history (avoid \n in JSON)
-    history_text = text.replace("\n", " ").strip()
-
-    state.history.append({"role": "assistant", "content": history_text})
+    # Store structured JSON in history (no \ escapes)
+    state.history.append({"role": "assistant", "content": characters_json})
     state.current_node = "scene_node"
 
     return state

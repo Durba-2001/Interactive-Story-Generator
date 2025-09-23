@@ -12,14 +12,6 @@ from src.database.models import StoryStateModel
 
 
 # ---------------------------
-# Continuation routing logic
-# ---------------------------
-def continuation_router_condition(state: StoryStateModel) -> str:
-    """Return the route explicitly set by the continuation_router_node."""
-    return state.route  # Must be set inside continuation_router_node
-
-
-# ---------------------------
 # Workflow for NEW stories
 # ---------------------------
 def create_workflow():
@@ -55,7 +47,7 @@ def create_continuation_workflow():
     graph.add_node("develop_character_node", develop_character_node)
     graph.add_node("append_scene_node", append_scene_node)
 
-    # Conditional edges
+    # Conditional edges: route is decided by state.route
     graph.add_conditional_edges(
         "continuation_router_node",
         continuation_router_condition,
@@ -66,12 +58,26 @@ def create_continuation_workflow():
         }
     )
 
-    # Loops / End
-    graph.add_edge("extend_plot_node", "continuation_router_node")
-    graph.add_edge("develop_character_node", "continuation_router_node")
+    # Set all continuation nodes to END after completion
+    graph.add_edge("extend_plot_node", END)
+    graph.add_edge("develop_character_node", END)
     graph.add_edge("append_scene_node", END)
 
     # Entry
     graph.set_entry_point("continuation_router_node")
 
     return graph.compile()
+
+
+# ---------------------------
+# Safe router condition
+# ---------------------------
+def continuation_router_condition(state: StoryStateModel) -> str:
+    """
+    Return the next node explicitly set by the continuation_router_node.
+    If no route is set, end the workflow safely.
+    """
+    if state.route: 
+        return state.route 
+    else:
+      return END

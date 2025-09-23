@@ -5,7 +5,6 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from loguru import logger
 import uuid
-from bson import ObjectId
 from src.database.connection import get_db
 from src.auth.models import UserSchema, UserCreate, UserResponse
 from src.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY
@@ -102,6 +101,7 @@ async def register(user: UserCreate, db=Depends(get_db)):
     refresh_token = create_refresh_token(user_doc)
 
     return {
+        "user_id": user_doc.user_id,
         "username": user_doc.username,
         "email": user_doc.email,
         "created_at": user_doc.created_at,
@@ -127,31 +127,4 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get
         "token_type": "bearer"
     }
 
-@router.post("/refresh")
-async def refresh_token(refresh_token: str, db=Depends(get_db)):
-    logger.info("Refresh token endpoint called")
-    try:
-        payload = jwt.decode(refresh_token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("sub")
-        if not user_id:
-            logger.error("Refresh token missing user_id")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-        user = await db["users"].find_one({"user_id": user_id})
-        if not user:
-            logger.error(f"User not found for refresh token: {user_id}")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
-
-        user_doc = UserSchema(**user)
-        new_access_token = create_access_token(user_doc)
-        new_refresh_token = create_refresh_token(user_doc)
-        logger.success(f"Tokens refreshed successfully for: {user_doc.username}")
-
-        return {
-            "access_token": new_access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer"
-        }
-    except JWTError:
-        logger.exception("JWT decode error on refresh")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
