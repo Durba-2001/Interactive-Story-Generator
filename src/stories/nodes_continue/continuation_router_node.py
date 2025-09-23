@@ -34,6 +34,6 @@ async def continuation_router_node(state: StoryStateModel) -> StoryStateModel:
     elif "character" in text:
         state.route = "develop_character"
     else:
-        state.route = "append_scene"  # fallback
+        state.route = "append_scene"  
 
     return state

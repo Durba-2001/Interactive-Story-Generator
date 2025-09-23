@@ -7,7 +7,7 @@ PROMPT_FILE = r"src/stories/prompts/scene_prompt.txt"
 
 async def scene_node(state: StoryStateModel) -> StoryStateModel:
     # Read prompt template
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    with open(PROMPT_FILE, "r") as f:
         template = f.read()
 
    # Safely format characters, defaulting missing description to empty string

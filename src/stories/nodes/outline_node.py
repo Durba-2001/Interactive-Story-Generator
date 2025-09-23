@@ -6,7 +6,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts/outline_prompt.txt"
 async def outline_node(state: StoryStateModel) -> StoryStateModel:
     # Read and format prompt
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    with open(PROMPT_FILE, "r") as f:
         prompt_text = f.read().format(prompt=state.prompt)
     
     # Generate outline
