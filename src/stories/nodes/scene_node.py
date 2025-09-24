@@ -10,7 +10,7 @@ async def scene_node(state: StoryStateModel) -> StoryStateModel:
     with open(PROMPT_FILE, "r") as f:
         template = f.read()
 
-   # Safely format characters, defaulting missing description to empty string
+   
     characters_str = ""
     for c in state.characters:
         name = c.get("name", "Unknown")

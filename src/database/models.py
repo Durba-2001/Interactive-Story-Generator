@@ -16,7 +16,7 @@ class StoryStateModel(BaseModel):
     scenes: List[str] = []
     history: List[Dict] = []  # internal workflow messages
     prompt:str
-    route: Optional[str] = None 
+
 
 # --- Stories Collection ---
 class StoryModel(BaseModel):

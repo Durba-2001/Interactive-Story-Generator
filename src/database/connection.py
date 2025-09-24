@@ -3,7 +3,8 @@ from src.config import MongoDB_url
 from loguru import logger
 client=None
 # Define an async function to get a MongoDB database
-async def get_db(db_name="interactive_story_generator_db"):
+async def get_db():
+  db_name="interactive_story_generator_db"
   global client
   try:
       if not client:

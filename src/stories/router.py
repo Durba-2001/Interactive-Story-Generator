@@ -44,7 +44,7 @@ async def create_story(
     return new_story
 
 
-@router.post("/continue/{story_id}", response_model=StoryModel)
+@router.post("/{story_id}/continue", response_model=StoryModel)
 async def continue_story(
     story_id: str,
     user_input: StoryContinue,

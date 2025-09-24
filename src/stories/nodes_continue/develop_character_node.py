@@ -25,7 +25,7 @@ async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
     assistant_text = response.content.strip()
 
-    # Update a character (simple example: append new info to first character matching name)
+    # Update a character 
     for char in state.characters:
         if char.get("name") == target:
             char["background"] = char.get("background", "") + " " + assistant_text

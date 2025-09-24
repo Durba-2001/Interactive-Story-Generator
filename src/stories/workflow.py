@@ -1,5 +1,3 @@
-# src/stories/workflow.py
-
 from langgraph.graph import StateGraph, END
 from src.stories.nodes.outline_node import outline_node
 from src.stories.nodes.character_node import character_node
@@ -77,7 +75,7 @@ def continuation_router_condition(state: StoryStateModel) -> str:
     Return the next node explicitly set by the continuation_router_node.
     If no route is set, end the workflow safely.
     """
-    if state.route: 
-        return state.route 
+    if state.current_node: 
+        return state.current_node 
     else:
       return END

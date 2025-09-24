@@ -28,12 +28,12 @@ async def continuation_router_node(state: StoryStateModel) -> StoryStateModel:
     # Explicitly set route
     text = assistant_text.lower()
     if "append" in text:
-        state.route = "append_scene"
+        state.current_node = "append_scene"
     elif "extend" in text:
-        state.route = "extend_plot"
+        state.current_node = "extend_plot"
     elif "character" in text:
-        state.route = "develop_character"
+        state.current_node = "develop_character"
     else:
-        state.route = "append_scene"  
+        state.current_node = "append_scene"  
 
     return state
