@@ -1,5 +1,0 @@
-Extend the plot outline:
-'{outline}'
-by incorporating '{input}', adding 1-2 new events while maintaining consistency.
-Output each event as 1-2 sentences.
-Return the updated outline as a structured list of events.

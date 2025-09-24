@@ -1,13 +1,12 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
 from src.config import api_key
-
+from src.stories.nodes_continue.prompts import extended_plot_outline_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
-PROMPT_FILE = r"src/stories/prompts_continue/extend_plot_prompt.txt"
 
 async def extend_plot_node(state: StoryStateModel) -> StoryStateModel:
-    with open(PROMPT_FILE, "r") as f:
-        prompt_text = f.read().format(
+    
+    prompt_text = extended_plot_outline_prompt.format(
             input=state.prompt,
             outline="\n".join(state.outline)
         )

@@ -1,9 +1,8 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
 from src.config import api_key
-
+from src.stories.nodes_continue.prompts import append_scene_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
-PROMPT_FILE = r"src/stories/prompts_continue/append_scene_prompt.txt"
 
 async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
     if state.scenes:
@@ -19,10 +18,7 @@ async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
             names.append(name)
 
     characters_text = ", ".join(names)
-
-
-    with open(PROMPT_FILE, "r") as f:
-        prompt_text = f.read().format(
+    prompt_text = append_scene_prompt.format(
             last_scene=last_scene,
             input=state.prompt,
             outline=outline_text,

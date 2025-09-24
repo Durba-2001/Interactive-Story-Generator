@@ -1,5 +1,0 @@
-Continue the story from the last scene '{last_scene}', incorporating '{input}', outline '{outline}', and characters '{characters}'.  
-Write 200-400 words building tension toward the next event.
-Focus on vivid descriptions, character actions, and dialogue.  
-End with a cliffhanger or suspenseful moment leading into the next plot point.
-Return only the story text (no extra explanations).
