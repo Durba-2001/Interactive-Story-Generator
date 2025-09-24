@@ -1,15 +1,12 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
 from src.config import api_key
-
+from src.stories.nodes.prompts import scene_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 PROMPT_FILE = r"src/stories/prompts/scene_prompt.txt"
 
 async def scene_node(state: StoryStateModel) -> StoryStateModel:
     # Read prompt template
-    with open(PROMPT_FILE, "r") as f:
-        template = f.read()
-
    
     characters_str = ""
     for c in state.characters:
@@ -22,7 +19,7 @@ async def scene_node(state: StoryStateModel) -> StoryStateModel:
 
 
     # Format prompt
-    prompt_text = template.format(
+    prompt_text = scene_prompt.format(
         outline="\n".join(state.outline),
         characters=characters_str
     )

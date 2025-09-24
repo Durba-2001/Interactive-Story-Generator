@@ -1,9 +1,0 @@
-You are an expert story planner.  
-Based on the following user prompt:
-
-"{prompt}"
-
-Create a high-level plot outline with 3–5 key events.  
-Output as a structured list of events, each 1–2 sentences long.  
-Ensure the story is coherent, original, and engaging.
-Return only the outline text (no extra explanations).
