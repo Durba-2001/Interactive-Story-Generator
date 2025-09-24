@@ -2,18 +2,13 @@ import json
 from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
 from src.config import api_key
-
+from src.stories.nodes.prompts import character_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
-PROMPT_FILE = r"src/stories/prompts/character_prompt.txt"
-
 
 async def character_node(state: StoryStateModel) -> StoryStateModel:
-    # Read template
-    with open(PROMPT_FILE, "r") as f:
-        template = f.read()
-
+  
     # Inject outline
-    prompt_text = template.replace("{outline}", "\n".join(state.outline))
+    prompt_text = character_prompt.replace("{outline}", "\n".join(state.outline))
 
     # Call LLM
     response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
