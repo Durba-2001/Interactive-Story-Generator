@@ -8,26 +8,28 @@ from src.stories.nodes_continue.develop_character_node import develop_character_
 from src.stories.nodes_continue.append_scene_node import append_scene_node
 from src.database.models import StoryStateModel
 
+def node_with_history(node_func, story_history):
+    async def wrapped_node(state):
+        return await node_func(state, story_history)
+    return wrapped_node
 
 # ---------------------------
 # Workflow for NEW stories
 # ---------------------------
-def create_workflow():
+def create_workflow(story_history):
     graph = StateGraph(StoryStateModel)
 
-    # Initial flow nodes
-    graph.add_node("outline_node", outline_node)
-    graph.add_node("character_node", character_node)
-    graph.add_node("scene_node", scene_node)
+    # Wrap nodes with history
+    graph.add_node("outline_node", node_with_history(outline_node, story_history))
+    graph.add_node("character_node", node_with_history(character_node, story_history))
+    graph.add_node("scene_node", node_with_history(scene_node, story_history))
 
     # Entry point
     graph.set_entry_point("outline_node")
 
-    # Edges for initial flow
+    # Edges
     graph.add_edge("outline_node", "character_node")
     graph.add_edge("character_node", "scene_node")
-    
-    # End after initial scene
     graph.add_edge("scene_node", END)
 
     return graph.compile()
@@ -36,16 +38,14 @@ def create_workflow():
 # ---------------------------
 # Workflow for CONTINUATION
 # ---------------------------
-def create_continuation_workflow():
+def create_continuation_workflow(story_history):
     graph = StateGraph(StoryStateModel)
 
-    # Nodes
-    graph.add_node("continuation_router_node", continuation_router_node)
-    graph.add_node("extend_plot_node", extend_plot_node)
-    graph.add_node("develop_character_node", develop_character_node)
-    graph.add_node("append_scene_node", append_scene_node)
+    graph.add_node("continuation_router_node", node_with_history(continuation_router_node, story_history))
+    graph.add_node("extend_plot_node", node_with_history(extend_plot_node, story_history))
+    graph.add_node("develop_character_node", node_with_history(develop_character_node, story_history))
+    graph.add_node("append_scene_node", node_with_history(append_scene_node, story_history))
 
-    # Conditional edges: route is decided by state.route
     graph.add_conditional_edges(
         "continuation_router_node",
         continuation_router_condition,
@@ -56,12 +56,10 @@ def create_continuation_workflow():
         }
     )
 
-    # Set all continuation nodes to END after completion
     graph.add_edge("extend_plot_node", END)
     graph.add_edge("develop_character_node", END)
     graph.add_edge("append_scene_node", END)
 
-    # Entry
     graph.set_entry_point("continuation_router_node")
 
     return graph.compile()

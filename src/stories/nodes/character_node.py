@@ -5,7 +5,7 @@ from src.config import api_key
 from src.stories.nodes.prompts import character_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
-async def character_node(state: StoryStateModel) -> StoryStateModel:
+async def character_node(state: StoryStateModel,story_history:list) -> StoryStateModel:
   
     # Inject outline
     prompt_text = character_prompt.replace("{outline}", "\n".join(state.outline))
@@ -26,7 +26,7 @@ async def character_node(state: StoryStateModel) -> StoryStateModel:
         characters_json = [{"name": text}]
 
     # Store structured JSON in history (no \ escapes)
-    state.history.append({"role": "assistant", "content": characters_json})
+    story_history.append({"role": "assistant", "content": characters_json})
     state.current_node = "scene_node"
 
     return state

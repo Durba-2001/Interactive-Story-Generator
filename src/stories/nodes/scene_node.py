@@ -3,9 +3,8 @@ from src.database.models import StoryStateModel
 from src.config import api_key
 from src.stories.nodes.prompts import scene_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
-PROMPT_FILE = r"src/stories/prompts/scene_prompt.txt"
 
-async def scene_node(state: StoryStateModel) -> StoryStateModel:
+async def scene_node(state: StoryStateModel,story_history: list) -> StoryStateModel:
     # Read prompt template
    
     characters_str = ""
@@ -39,7 +38,7 @@ async def scene_node(state: StoryStateModel) -> StoryStateModel:
     history_text = text.replace("\n", " ").strip()
     # Update state
     state.scenes = cleaned_lines
-    state.history.append({"role": "assistant", "content": history_text})
+    story_history.append({"role": "assistant", "content": history_text})
     state.current_node = "end_node"  # adjust as needed
 
     return state

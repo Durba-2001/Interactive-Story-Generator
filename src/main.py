@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from src.stories.router import router as api_router
-from src.auth.router import router as auth_router
+from src.endpoints.router import router as api_router
+from src.endpoints.router_auth import router as auth_router
 
 app = FastAPI(
     title="Interactive Story Generator",

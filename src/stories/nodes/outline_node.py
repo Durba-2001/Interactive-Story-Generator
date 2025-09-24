@@ -4,7 +4,7 @@ from src.config import api_key
 from src.stories.nodes.prompts import outline_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
-async def outline_node(state: StoryStateModel) -> StoryStateModel:
+async def outline_node(state: StoryStateModel,story_history: list) -> StoryStateModel:
     # Read and format prompt
    
     prompt_text = outline_prompt.format(prompt=state.prompt)
@@ -25,7 +25,7 @@ async def outline_node(state: StoryStateModel) -> StoryStateModel:
     history_text = text.replace("\n", " ").strip()
     # Assign to state
     state.outline = lines
-    state.history.append({"role": "assistant", "content": history_text})
+    story_history.append({"role": "assistant", "content": history_text})
     state.current_node = "character_node"
     
     return state
