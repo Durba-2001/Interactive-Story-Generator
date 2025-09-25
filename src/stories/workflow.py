@@ -69,10 +69,6 @@ def create_continuation_workflow(story_history):
 # Safe router condition
 # ---------------------------
 def continuation_router_condition(state: StoryStateModel) -> str:
-    """
-    Return the next node explicitly set by the continuation_router_node.
-    If no route is set, end the workflow safely.
-    """
     if state.current_node: 
         return state.current_node 
     else:

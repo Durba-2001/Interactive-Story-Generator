@@ -4,7 +4,7 @@ from src.config import api_key
 from src.stories.nodes_continue.prompts import append_scene_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
-async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
+async def append_scene_node(state: StoryStateModel,story_history:list) -> StoryStateModel:
     if state.scenes:
         last_scene = state.scenes[-1]
     else:
@@ -30,6 +30,6 @@ async def append_scene_node(state: StoryStateModel) -> StoryStateModel:
     assistant_text_clean = " ".join(assistant_text.split())  # collapses newlines + extra spaces
 
     state.scenes.append(assistant_text_clean)
-    state.history.append({"role": "assistant", "content": assistant_text_clean})
+    story_history.append({"role": "assistant", "content": assistant_text_clean})
     state.current_node = "done"  # end node
     return state

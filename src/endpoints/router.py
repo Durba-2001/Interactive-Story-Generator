@@ -58,7 +58,10 @@ async def create_story(
     # Scenes
     scenes_list = []
     for idx, scene in enumerate(final_state.scenes, start=1):
-        scenes_list.append(f"Scene {idx}: {scene}")
+        scenes_list.append({
+            "scene_number": idx,
+            "content": scene
+        })
     structured_story["scenes"] = scenes_list
 
     # Save story

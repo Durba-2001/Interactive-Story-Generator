@@ -5,7 +5,7 @@ from src.stories.nodes_continue.prompts import develop_character
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
 
-async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
+async def develop_character_node(state: StoryStateModel,story_history:list) -> StoryStateModel:
     # Choose a target character from user_input or default to first
     if state.prompt:
         target = state.prompt
@@ -30,6 +30,6 @@ async def develop_character_node(state: StoryStateModel) -> StoryStateModel:
         if char.get("name") == target:
             char["background"] = char.get("background", "") + " " + assistant_text
 
-    state.history.append({"role": "assistant", "content": assistant_text})
+    story_history.append({"role": "assistant", "content": assistant_text})
     state.current_node = "continuation_router_node"  # loop back
     return state

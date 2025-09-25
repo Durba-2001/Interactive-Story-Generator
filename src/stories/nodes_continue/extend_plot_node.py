@@ -4,7 +4,7 @@ from src.config import api_key
 from src.stories.nodes_continue.prompts import extended_plot_outline_prompt
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
-async def extend_plot_node(state: StoryStateModel) -> StoryStateModel:
+async def extend_plot_node(state: StoryStateModel,story_history:list) -> StoryStateModel:
     
     prompt_text = extended_plot_outline_prompt.format(
             input=state.prompt,
@@ -26,6 +26,6 @@ async def extend_plot_node(state: StoryStateModel) -> StoryStateModel:
     state.outline = clean_lines
 
 
-    state.history.append({"role": "assistant", "content": assistant_text})
+    story_history.append({"role": "assistant", "content": assistant_text})
     state.current_node = "continuation_router_node"  # loop back
     return state
