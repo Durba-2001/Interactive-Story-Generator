@@ -182,56 +182,50 @@ async def continue_story(
 # ---------------------------
 # GET ALL STORIES
 # ---------------------------
-@router.get("/", response_model=list[StoryResponse])
+@router.get("/", response_model=list[dict])
 async def get_all_stories(
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     stories_cursor = db["stories"].find({"user_id": current_user.user_id})
     stories_list = []
+    story_number = 1
 
     async for story_doc in stories_cursor:
         story_model = StoryModel(**story_doc)
 
         # Build structured story
-        structured_story = {}
+        structured_story = {
+            "outline": story_model.state.outline or [],
+            "characters": [
+                {
+                    "name": c.get("name", "Unknown"),
+                    "background": c.get("background", "No background available."),
+                    "motivations": c.get("motivations", "No motivations specified."),
+                    "role": c.get("role", "No role specified."),
+                } for c in story_model.state.characters
+            ],
+            "scenes": [
+                {"scene_number": idx + 1, "content": scene} 
+                for idx, scene in enumerate(story_model.state.scenes or [])
+            ],
+        }
 
-        # Outline
-        outline_list = []
-        for point in story_model.state.outline:
-            outline_list.append(point)
-        structured_story["outline"] = outline_list
+        # Append story with a number for clear separation
+        stories_list.append({
+            "story_number": story_number,
+            "story_id": story_model.story_id,
+            "user_id": story_model.user_id,
+            "full_story": structured_story,
+            "created_at": story_model.created_at,
+            "updated_at": story_model.updated_at,
+        })
 
-        # Characters
-        characters_list = []
-        for c in story_model.state.characters:
-            character = {
-                "name": c.get("name", "Unknown"),
-                "background": c.get("background", "No background available."),
-                "motivations": c.get("motivations", "No motivations specified."),
-                "role": c.get("role", "No role specified."),
-            }
-            characters_list.append(character)
-        structured_story["characters"] = characters_list
+        story_number += 1
 
-        # Scenes
-        scenes_list = []
-        for idx, scene in enumerate(story_model.state.scenes, start=1):
-            scenes_list.append({
-                "scene_number": idx,
-                "content": scene
-            })
-        structured_story["scenes"] = scenes_list
-
-        stories_list.append(StoryResponse(
-            story_id=story_model.story_id,
-            user_id=story_model.user_id,
-            full_story=structured_story,
-            created_at=story_model.created_at,
-            updated_at=story_model.updated_at,
-        ))
-    logger.success(f" {len(stories_list)} stories fetched for user: {current_user.username} with id :{current_user.user_id}")
+    logger.success(f"{len(stories_list)} stories fetched for user: {current_user.username} with id :{current_user.user_id}")
     return stories_list
+
 
 
 # ---------------------------
