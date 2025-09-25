@@ -33,11 +33,34 @@ async def create_story(
     # Run workflow
     final_state_dict = await workflow.ainvoke(initial_state)
     final_state = StoryStateModel(**final_state_dict)
-    full_story_text = "\n\n".join([
-        "Outline:\n" + "\n".join(final_state.outline),
-        "Characters:\n" + "\n".join([c.get("name", "") for c in final_state.characters]),
-        "Scenes:\n" + "\n".join(final_state.scenes),
-    ])
+
+    # ✅ Build structured story step by step (no inline one-liners)
+    structured_story = {}
+
+    # Outline
+    outline_list = []
+    for point in final_state.outline:
+        outline_list.append(point)
+    structured_story["outline"] = outline_list
+
+    # Characters
+    characters_list = []
+    for c in final_state.characters:
+        character = {
+            "name": c.get("name", "Unknown"),
+            "background": c.get("background", "No background available."),
+            "motivations": c.get("motivations", "No motivations specified."),
+            "role": c.get("role", "No role specified."),
+        }
+        characters_list.append(character)
+    structured_story["characters"] = characters_list
+
+    # Scenes
+    scenes_list = []
+    for idx, scene in enumerate(final_state.scenes, start=1):
+        scenes_list.append(f"Scene {idx}: {scene}")
+    structured_story["scenes"] = scenes_list
+
     # Save story
     new_story = StoryModel(
         story_id=story_id,
@@ -48,22 +71,26 @@ async def create_story(
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
-    new_story_api=StoryResponse(story_id=new_story.story_id,
+
+    new_story_api = StoryResponse(
+        story_id=new_story.story_id,
         user_id=new_story.user_id,
-        full_story = full_story_text,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-        )
+        full_story=structured_story,   # ✅ structured JSON (no full text)
+        created_at=new_story.created_at,
+        updated_at=new_story.updated_at,
+    )
+
     await db["stories"].insert_one(new_story.model_dump())
     logger.success(f"New story created with ID: {story_id} for user: {current_user.username}")
     
     return new_story_api
 
 
+
 # ---------------------------
 # CONTINUE STORY
 # ---------------------------
-@router.post("/{story_id}/continue", response_model=StoryModel)
+@router.post("/{story_id}/continue", response_model=StoryResponse)
 async def continue_story(
     story_id: str,
     user_input: StoryContinue,
@@ -109,40 +136,155 @@ async def continue_story(
         },
     )
 
-    return story_model
+    # Build structured JSON response
+    structured_story = {}
+
+    # Outline
+    outline_list = []
+    for point in updated_state.outline:
+        outline_list.append(point)
+    structured_story["outline"] = outline_list
+
+    # Characters
+    characters_list = []
+    for c in updated_state.characters:
+        character = {
+            "name": c.get("name", "Unknown"),
+            "background": c.get("background", "No background available."),
+            "motivations": c.get("motivations", "No motivations specified."),
+            "role": c.get("role", "No role specified."),
+        }
+        characters_list.append(character)
+    structured_story["characters"] = characters_list
+
+    # Scenes
+    scenes_list = []
+    for idx, scene in enumerate(updated_state.scenes, start=1):
+        scenes_list.append({
+            "scene_number": idx,
+            "content": scene
+        })
+    structured_story["scenes"] = scenes_list
+
+    return StoryResponse(
+        story_id=story_model.story_id,
+        user_id=story_model.user_id,
+        full_story=structured_story,
+        created_at=story_model.created_at,
+        updated_at=story_model.updated_at,
+    )
+
 
 
 # ---------------------------
 # GET ALL STORIES
 # ---------------------------
-@router.get("/", response_model=list[StoryModel])
+@router.get("/", response_model=list[StoryResponse])
 async def get_all_stories(
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     stories_cursor = db["stories"].find({"user_id": current_user.user_id})
-    stories = []
-    async for story in stories_cursor:
-        stories.append(StoryModel(**story))
-    return stories
+    stories_list = []
+
+    async for story_doc in stories_cursor:
+        story_model = StoryModel(**story_doc)
+
+        # Build structured story
+        structured_story = {}
+
+        # Outline
+        outline_list = []
+        for point in story_model.state.outline:
+            outline_list.append(point)
+        structured_story["outline"] = outline_list
+
+        # Characters
+        characters_list = []
+        for c in story_model.state.characters:
+            character = {
+                "name": c.get("name", "Unknown"),
+                "background": c.get("background", "No background available."),
+                "motivations": c.get("motivations", "No motivations specified."),
+                "role": c.get("role", "No role specified."),
+            }
+            characters_list.append(character)
+        structured_story["characters"] = characters_list
+
+        # Scenes
+        scenes_list = []
+        for idx, scene in enumerate(story_model.state.scenes, start=1):
+            scenes_list.append({
+                "scene_number": idx,
+                "content": scene
+            })
+        structured_story["scenes"] = scenes_list
+
+        stories_list.append(StoryResponse(
+            story_id=story_model.story_id,
+            user_id=story_model.user_id,
+            full_story=structured_story,
+            created_at=story_model.created_at,
+            updated_at=story_model.updated_at,
+        ))
+    logger.success(f" {len(stories_list)} stories fetched for user: {current_user.username} with id :{current_user.user_id}")
+    return stories_list
 
 
 # ---------------------------
 # GET STORY BY ID
 # ---------------------------
-@router.get("/{story_id}", response_model=StoryModel)
+@router.get("/{story_id}", response_model=StoryResponse)
 async def get_story(
     story_id: str,
     db=Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    story = await db["stories"].find_one(
+    story_doc = await db["stories"].find_one(
         {"story_id": story_id, "user_id": current_user.user_id}
     )
-    if not story:
+    if not story_doc:
         raise HTTPException(status_code=404, detail="Story not found")
-    return StoryModel(**story)
 
+    story_model = StoryModel(**story_doc)
+
+    # Build structured story
+    structured_story = {}
+
+    # Outline
+    outline_list = []
+    for point in story_model.state.outline:
+        outline_list.append(point)
+    structured_story["outline"] = outline_list
+
+    # Characters
+    characters_list = []
+    for c in story_model.state.characters:
+        character = {
+            "name": c.get("name", "Unknown"),
+            "background": c.get("background", "No background available."),
+            "motivations": c.get("motivations", "No motivations specified."),
+            "role": c.get("role", "No role specified."),
+        }
+        characters_list.append(character)
+    structured_story["characters"] = characters_list
+
+    # Scenes
+    scenes_list = []
+    for idx, scene in enumerate(story_model.state.scenes, start=1):
+        scenes_list.append({
+            "scene_number": idx,
+            "content": scene
+        })
+    structured_story["scenes"] = scenes_list
+    logger.success(f"Story fetched: {story_id} for user: {current_user.username} with id :{current_user.user_id}")
+    return StoryResponse(
+        story_id=story_model.story_id,
+        user_id=story_model.user_id,
+        full_story=structured_story,
+        created_at=story_model.created_at,
+        updated_at=story_model.updated_at,
+    )
 
 # ---------------------------
 # DELETE STORY
@@ -160,4 +302,5 @@ async def delete_story(
         raise HTTPException(status_code=404, detail="Story not found")
     
     await db["stories"].delete_one({"story_id": story_id, "user_id": current_user.user_id})
+    logger.success(f"Story deleted: {story_id} for user: {current_user.username} with id {current_user.user_id}")
     return {"message": f"Story {story_id} deleted successfully"}

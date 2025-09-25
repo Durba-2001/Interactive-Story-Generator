@@ -31,6 +31,6 @@ class StoryModel(BaseModel):
 class StoryResponse(BaseModel):
     story_id:str
     user_id: str  
-    full_story: str
+    full_story: Dict
     created_at: datetime 
     updated_at: datetime 
