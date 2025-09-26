@@ -34,7 +34,7 @@ async def create_story(
     final_state_dict = await workflow.ainvoke(initial_state)
     final_state = StoryStateModel(**final_state_dict)
 
-    # ✅ Build structured story step by step (no inline one-liners)
+    # ✅ Build structured story step by step 
     structured_story = {}
 
     # Outline

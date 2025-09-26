@@ -26,6 +26,6 @@ async def outline_node(state: StoryStateModel,story_history: list) -> StoryState
     # Assign to state
     state.outline = lines
     story_history.append({"role": "assistant", "content": history_text})
-    state.current_node = "character_node"
+   
     
     return state

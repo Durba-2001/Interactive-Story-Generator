@@ -6,7 +6,7 @@ from jose import jwt, JWTError
 from loguru import logger
 import uuid
 from src.database.connection import get_db
-from src.auth.models import UserSchema, UserCreate, UserResponse
+from src.auth.models import UserSchema, UserCreate
 from src.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS, REFRESH_SECRET_KEY
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -45,12 +45,12 @@ def create_refresh_token(user: UserSchema, expires_delta: timedelta = None):
 async def authenticate_user(db, username: str, password: str):
     user = await db["users"].find_one({"username": username})
     if not user:
-        logger.warning(f"Authentication failed: user '{username}' not found")
+        logger.error(f"Authentication failed: user '{username}' not found")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
 
     user_doc = UserSchema(**user)
     if not pwd_context.verify(password, user_doc.hashed_password):
-        logger.warning(f"Authentication failed: incorrect password for '{username}'")
+        logger.error(f"Authentication failed: incorrect password for '{username}'")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
     logger.info(f"User authenticated successfully: {username}")
@@ -78,7 +78,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db=Depends(get_d
 # -------------------------
 # Routes
 # -------------------------
-@router.post("/register", response_model=UserResponse)
+@router.post("/register")
 async def register(user: UserCreate, db=Depends(get_db)):
     logger.info(f"Register endpoint called for: {user.username}")
     existing = await db["users"].find_one({"username": user.username})

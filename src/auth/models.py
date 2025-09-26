@@ -18,7 +18,8 @@ class UserLogin(BaseModel):
     username: str
     password: str   # plain text for login only
 
-class UserResponse(BaseModel):
-    username: str
-    email: EmailStr
-    created_at: datetime
+# class UserResponse(BaseModel):
+#     user_id:str
+#     username: str
+#     email: EmailStr
+#     created_at: datetime

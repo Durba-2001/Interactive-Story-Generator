@@ -20,7 +20,6 @@ async def continuation_router_node(state: StoryStateModel,story_history:list) ->
     assistant_text_clean = " ".join(assistant_text.split())
 
     # Append to history
-    # story_history.append({"role": "user", "content": state.prompt})
     story_history.append({"role": "assistant", "content": assistant_text_clean})
 
     # Directly set the node name returned by the model

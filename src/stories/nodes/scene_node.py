@@ -6,7 +6,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
 
 async def scene_node(state: StoryStateModel,story_history: list) -> StoryStateModel:
     # Read prompt template
-   
+    state.current_node = "scene_node"
     characters_str = ""
     for c in state.characters:
         name = c.get("name", "Unknown")
@@ -39,6 +39,6 @@ async def scene_node(state: StoryStateModel,story_history: list) -> StoryStateMo
     # Update state
     state.scenes = cleaned_lines
     story_history.append({"role": "assistant", "content": history_text})
-    state.current_node = "end_node"  # adjust as needed
+    
 
     return state
