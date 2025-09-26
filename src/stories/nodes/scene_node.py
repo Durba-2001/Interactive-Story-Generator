@@ -1,21 +1,18 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
 from src.database.models import StoryStateModel
-from src.config import api_key
 from src.stories.nodes.prompts import scene_prompt
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash-lite", api_key=api_key)
+from src.stories.utils import run_llm
 
-async def scene_node(state: StoryStateModel,story_history: list) -> StoryStateModel:
-    # Read prompt template
+async def scene_node(state: StoryStateModel, story_history: list) -> StoryStateModel:
     state.current_node = "scene_node"
+
+    # Build characters string
     characters_str = ""
     for c in state.characters:
         name = c.get("name", "Unknown")
-        description = c.get("description", "")
+        description = c.get("background", "")
         characters_str += f"{name} - {description}\n"
 
-    # Remove the trailing newline if needed
-    characters_str = characters_str.rstrip("\n")
-
+    characters_str = characters_str.rstrip("\n")  # Remove trailing newline
 
     # Format prompt
     prompt_text = scene_prompt.format(
@@ -23,22 +20,20 @@ async def scene_node(state: StoryStateModel,story_history: list) -> StoryStateMo
         characters=characters_str
     )
 
-    # Generate scenes
-    response = await llm.ainvoke([{"role": "user", "content": prompt_text}])
-    text = response.content  # use .content instead of .text
+    # Call LLM
+    text = await run_llm(
+        prompt_text,
+        "You are a professional novelist.",
+        story_history
+    )
 
-    # Clean lines
+    # Clean and split into lines
     cleaned_lines = []
-
-    for line in text.splitlines():  # Split text into lines
-        stripped_line = line.strip()  # Remove leading/trailing whitespace
-        if stripped_line:  # Only keep non-empty lines
+    for line in text.splitlines():
+        stripped_line = line.strip()
+        if stripped_line:
             cleaned_lines.append(stripped_line)
 
-    history_text = text.replace("\n", " ").strip()
-    # Update state
     state.scenes = cleaned_lines
-    story_history.append({"role": "assistant", "content": history_text})
-    
 
     return state
